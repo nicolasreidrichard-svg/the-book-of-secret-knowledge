@@ -700,6 +700,7 @@ performance of any of your sites from across the globe.<br>
 
 <p>
 &nbsp;&nbsp; <a href="https://keybase.io/"><b>Keybase</b></a> - it's open source and powered by public-key cryptography.<br>
+&nbsp;&nbsp; <a href="https://github.com/nicolasreidrichard-svg/crypto-wallet-manager"><b>crypto-wallet-manager</b></a> - a comprehensive tool for managing crypto wallets securely with multi-chain support and encrypted key storage.<br>
 </p>
 
 ##### :black_small_square: PGP Keyservers
