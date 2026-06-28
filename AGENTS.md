@@ -62,7 +62,8 @@ Per `.github/CONTRIBUTING.md`:
 
 ### Generate downloadable book (EPUB/PDF)
 
-Defined in `.github/workflows/generate-book.yml`. Triggers on push to `master`
+Defined in `.github/workflows/generate-book.yml`. Requires `permissions:
+contents: write`. Triggers on push to `master`
 when `README.md`, `book-metadata.yaml`, or the workflow file itself changes,
 and also via `workflow_dispatch`.
 
@@ -73,8 +74,10 @@ Steps performed by the workflow:
    via `sed`.
 3. Generate EPUB with `pandoc --to epub3 --toc --toc-depth=3`.
 4. Generate PDF with `pandoc --to pdf --pdf-engine=xelatex`.
-5. Delete any previous `book-latest` GitHub Release.
-6. Create a new `book-latest` release with both `.epub` and `.pdf` assets.
+5. Delete any previous `book-latest` GitHub Release (uses `gh release delete
+   --yes --cleanup-tag`).
+6. Create a new `book-latest` release with both `.epub` and `.pdf` assets
+   (requires `GH_TOKEN`).
 
 If modifying the book-generation pipeline, test locally with:
 
@@ -94,7 +97,8 @@ pandoc /tmp/book-content.md --from markdown+raw_html --to pdf \
   --output test.pdf --metadata-file book-metadata.yaml \
   --toc --toc-depth=3 --pdf-engine=xelatex \
   -V geometry:margin=1in -V mainfont="DejaVu Serif" \
-  -V monofont="DejaVu Sans Mono" --standalone
+  -V monofont="DejaVu Sans Mono" -V linkcolor:blue \
+  -V urlcolor:blue --standalone
 ```
 
 ### Monitor changes via RSS
