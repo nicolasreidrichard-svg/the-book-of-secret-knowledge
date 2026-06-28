@@ -77,6 +77,29 @@ This project exists thanks to all the people who contribute.
 
 GitHub exposes an [RSS/Atom](https://github.com/trimstray/the-book-of-secret-knowledge/commits.atom) feed of the commits, which may also be useful if you want to be kept informed about all changes.
 
+## :books: &nbsp;Downloadable Book
+
+You can download this entire collection as an offline book in multiple formats from the [GitHub Release](https://github.com/trimstray/the-book-of-secret-knowledge/releases/tag/book-latest):
+
+| Format | Best for |
+|--------|----------|
+| **HTML** | Any web browser — instantly viewable, fully self-contained, works offline |
+| **EPUB** | E-readers (Kindle, Kobo, Apple Books), phones, tablets |
+| **PDF** | Printing, offline viewing on any device |
+
+The book is rebuilt automatically whenever `README.md` is updated on the `master` branch.
+
+To build locally, install [pandoc](https://pandoc.org/) (and [texlive-xetex](https://www.tug.org/texlive/) for PDF), then run:
+
+```bash
+./build-book.sh          # all formats (epub, pdf, html)
+./build-book.sh html     # standalone HTML only
+./build-book.sh epub     # EPUB only
+./build-book.sh pdf      # PDF only
+```
+
+Output files are placed in the `build/` directory.
+
 ## :ballot_box_with_check: &nbsp;ToDo
 
 - [ ] Add new stuff...

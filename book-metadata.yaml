@@ -1,0 +1,18 @@
+---
+title: "The Book of Secret Knowledge"
+subtitle: "A collection of inspiring lists, manuals, cheatsheets, blogs, hacks, one-liners, cli/web tools, and more"
+author: "trimstray"
+language: en-US
+rights: "MIT License"
+description: |
+  A collection of various materials and tools useful for System and Network
+  administrators, DevOps engineers, Pentesters, and Security Researchers.
+keywords:
+  - sysadmin
+  - devops
+  - security
+  - cheatsheet
+  - linux
+  - networking
+  - pentest
+...

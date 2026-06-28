@@ -1,0 +1,163 @@
+name: Generate Downloadable Book
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - README.md
+      - book-metadata.yaml
+      - .github/workflows/generate-book.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pandoc and LaTeX
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            pandoc \
+            texlive-xetex \
+            texlive-fonts-recommended \
+            texlive-plain-generic \
+            texlive-fonts-extra
+
+      - name: Pre-process README for book output
+        run: |
+          # Remove GitHub emoji shortcodes (e.g. :notebook_with_decorative_cover:)
+          # and clean up GitHub-specific badge/contribution images so the book
+          # renders cleanly in all output formats.
+          sed \
+            -e 's/:[a-zA-Z0-9_]*: &nbsp;//g' \
+            -e 's/:[a-zA-Z0-9_]*://g' \
+            -e '/img\.shields\.io/d' \
+            -e '/badge/d' \
+            -e '/opencollective\.com.*contributors\.svg/d' \
+            -e 's/&nbsp;/ /g' \
+            README.md > /tmp/book-content.md
+
+      - name: Generate EPUB
+        run: |
+          pandoc /tmp/book-content.md \
+            --from markdown+raw_html \
+            --to epub3 \
+            --output the-book-of-secret-knowledge.epub \
+            --metadata-file book-metadata.yaml \
+            --toc \
+            --toc-depth=3 \
+            --standalone
+
+      - name: Generate PDF
+        run: |
+          pandoc /tmp/book-content.md \
+            --from markdown+raw_html \
+            --to pdf \
+            --output the-book-of-secret-knowledge.pdf \
+            --metadata-file book-metadata.yaml \
+            --toc \
+            --toc-depth=3 \
+            --pdf-engine=xelatex \
+            -V geometry:margin=1in \
+            -V linkcolor:blue \
+            -V urlcolor:blue \
+            -V mainfont="DejaVu Serif" \
+            -V monofont="DejaVu Sans Mono" \
+            --standalone
+
+      - name: Generate standalone HTML
+        run: |
+          pandoc /tmp/book-content.md \
+            --from markdown+raw_html \
+            --to html5 \
+            --output the-book-of-secret-knowledge.html \
+            --metadata-file book-metadata.yaml \
+            --toc \
+            --toc-depth=3 \
+            --standalone \
+            --self-contained \
+            --metadata title="The Book of Secret Knowledge" \
+            --css=- <<'CSS'
+          <style>
+            body {
+              font-family: "DejaVu Serif", Georgia, serif;
+              max-width: 900px;
+              margin: 0 auto;
+              padding: 2rem;
+              line-height: 1.6;
+              color: #333;
+              background: #fefefe;
+            }
+            h1, h2, h3, h4, h5, h6 {
+              color: #2c3e50;
+              margin-top: 1.5em;
+            }
+            a { color: #2980b9; text-decoration: none; }
+            a:hover { text-decoration: underline; }
+            code {
+              background: #f4f4f4;
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-size: 0.9em;
+            }
+            pre {
+              background: #2c3e50;
+              color: #ecf0f1;
+              padding: 1rem;
+              border-radius: 5px;
+              overflow-x: auto;
+            }
+            pre code { background: none; color: inherit; padding: 0; }
+            blockquote {
+              border-left: 4px solid #2980b9;
+              margin-left: 0;
+              padding-left: 1rem;
+              color: #555;
+            }
+            #TOC {
+              background: #f8f9fa;
+              border: 1px solid #e9ecef;
+              border-radius: 5px;
+              padding: 1rem 1.5rem;
+              margin-bottom: 2rem;
+            }
+            #TOC ul { list-style-type: none; padding-left: 1rem; }
+            #TOC > ul { padding-left: 0; }
+          </style>
+          CSS
+
+      - name: Delete previous release (if exists)
+        run: |
+          if gh release view book-latest &>/dev/null; then
+            gh release delete book-latest --yes --cleanup-tag
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Create GitHub Release with book files
+        run: |
+          gh release create book-latest \
+            --title "The Book of Secret Knowledge – Latest Edition" \
+            --notes "## Download The Book of Secret Knowledge
+
+          Downloadable formats of The Book of Secret Knowledge, built automatically from the latest \`README.md\`.
+
+          | Format | Best for |
+          |--------|----------|
+          | **HTML** | Any web browser, instantly viewable, fully self-contained, works offline |
+          | **EPUB** | E-readers (Kindle, Kobo, Apple Books), phones, tablets |
+          | **PDF**  | Printing, offline viewing on any device |
+
+          Generated from commit \`${{ github.sha }}\` on $(date -u '+%Y-%m-%d %H:%M UTC')." \
+            the-book-of-secret-knowledge.html \
+            the-book-of-secret-knowledge.epub \
+            the-book-of-secret-knowledge.pdf
+        env:
+          GH_TOKEN: ${{ github.token }}
