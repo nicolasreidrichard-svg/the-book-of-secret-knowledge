@@ -68,13 +68,19 @@ and also via `workflow_dispatch`.
 
 Steps performed by the workflow:
 
-1. Install pandoc + TeX Live (`texlive-xetex`, fonts).
+1. Install pandoc + TeX Live (`texlive-xetex`, `texlive-fonts-recommended`,
+   `texlive-plain-generic`, `texlive-fonts-extra`).
 2. Pre-process `README.md` — strip GitHub emoji shortcodes and badge images
    via `sed`.
 3. Generate EPUB with `pandoc --to epub3 --toc --toc-depth=3`.
-4. Generate PDF with `pandoc --to pdf --pdf-engine=xelatex`.
-5. Delete any previous `book-latest` GitHub Release.
-6. Create a new `book-latest` release with both `.epub` and `.pdf` assets.
+4. Generate PDF with `pandoc --to pdf --pdf-engine=xelatex` (includes
+   `-V linkcolor:blue -V urlcolor:blue`).
+5. Delete any previous `book-latest` GitHub Release
+   (`gh release delete book-latest --yes --cleanup-tag`; requires `GH_TOKEN`).
+6. Create a new `book-latest` release with both `.epub` and `.pdf` assets
+   (`gh release create book-latest`; requires `GH_TOKEN`).
+
+The workflow requires `permissions: contents: write` to create releases.
 
 If modifying the book-generation pipeline, test locally with:
 
@@ -94,7 +100,8 @@ pandoc /tmp/book-content.md --from markdown+raw_html --to pdf \
   --output test.pdf --metadata-file book-metadata.yaml \
   --toc --toc-depth=3 --pdf-engine=xelatex \
   -V geometry:margin=1in -V mainfont="DejaVu Serif" \
-  -V monofont="DejaVu Sans Mono" --standalone
+  -V monofont="DejaVu Sans Mono" \
+  -V linkcolor:blue -V urlcolor:blue --standalone
 ```
 
 ### Monitor changes via RSS
@@ -115,6 +122,12 @@ Useful for keeping informed about all changes to the repository.
 - Entries are organized by topical sections with a table of contents at the
   top. When adding a link, place it in the most specific existing section and
   keep the surrounding formatting (bullet style, description style) consistent.
+- The "Shell One-liners" section is organized by tool name (e.g. `terminal`,
+  `curl`, `openssl`), each with its own sub-TOC entry and `######` sub-heading.
+  New one-liners should go under the correct tool heading.
+- The "Shell functions" section contains reusable bash functions (e.g.
+  `DomainResolve`, `GetASN`) with dependency lists and example usage.
+- The "Shell Tricks" section documents a raw-shell stabilization sequence.
 - Do not bulk-reformat `README.md`. Diffs should be scoped to the change.
 - `book-metadata.yaml` must stay in sync with `README.md` header metadata
   (title, subtitle, author, language). If the book title or author changes in
