@@ -15,8 +15,10 @@ This repo is a single curated reference list. The substantive content lives in
 - `.github/CONTRIBUTING.md` — contribution guidelines and link-check recipe.
 - `.github/CODE_OF_CONDUCT.md` — Contributor Covenant v1.4.
 - `.github/FUNDING.yml` — Open Collective / GitHub Sponsors links.
-- `.github/workflows/generate-book.yml` — CI workflow that builds EPUB/PDF
-  releases from `README.md`.
+- `.github/workflows/generate-book.yml` — CI workflow that builds
+  HTML/EPUB/PDF releases from `README.md`.
+- `build-book.sh` — Local build script for generating book formats.
+- `.gitignore` — Excludes `build/` directory (local build output).
 
 There is no build system, package manager, or test suite in this repository.
 Changes are almost always edits to `README.md`.
@@ -60,7 +62,7 @@ Per `.github/CONTRIBUTING.md`:
 - One-line PR description (do not continue on new lines).
 - Explain the problem and proposed solution.
 
-### Generate downloadable book (EPUB/PDF)
+### Generate downloadable book (HTML/EPUB/PDF)
 
 Defined in `.github/workflows/generate-book.yml`. Triggers on push to `master`
 when `README.md`, `book-metadata.yaml`, or the workflow file itself changes,
@@ -68,20 +70,37 @@ and also via `workflow_dispatch`.
 
 Steps performed by the workflow:
 
-1. Install pandoc + TeX Live (`texlive-xetex`, fonts).
-2. Pre-process `README.md` — strip GitHub emoji shortcodes and badge images
+1. Install pandoc + TeX Live (`texlive-xetex`, fonts) — cached between runs.
+2. Pre-process `README.md` — strip GitHub emoji shortcodes, badge images,
+   OpenCollective contributor images, `&nbsp;` entities, and TOC back-links
    via `sed`.
 3. Generate EPUB with `pandoc --to epub3 --toc --toc-depth=3`.
-4. Generate PDF with `pandoc --to pdf --pdf-engine=xelatex`.
-5. Delete any previous `book-latest` GitHub Release.
-6. Create a new `book-latest` release with both `.epub` and `.pdf` assets.
+4. Generate PDF with `pandoc --to pdf --pdf-engine=xelatex -V fontsize=11pt`.
+5. Generate standalone HTML with `pandoc --to html5 --self-contained` with
+   embedded CSS styling.
+6. Verify generated files exist and are non-trivial in size.
+7. Delete any previous `book-latest` GitHub Release.
+8. Create a new `book-latest` release with `.html`, `.epub`, and `.pdf` assets
+   including file sizes in the release notes.
 
-If modifying the book-generation pipeline, test locally with:
+To build locally, use the `build-book.sh` script:
+
+```bash
+./build-book.sh          # all formats (epub, pdf, html)
+./build-book.sh html     # standalone HTML only
+./build-book.sh epub     # EPUB only
+./build-book.sh pdf      # PDF only
+```
+
+Or test manually with pandoc:
 
 ```bash
 # Pre-process
 sed -e 's/:[a-zA-Z0-9_]*: &nbsp;//g' -e 's/:[a-zA-Z0-9_]*://g' \
     -e '/img\.shields\.io/d' -e '/badge/d' \
+    -e '/opencollective\.com.*contributors\.svg/d' \
+    -e 's/&nbsp;/ /g' \
+    -e 's/\[<sup>\[TOC\]<\/sup>\](#[^)]*)//g' \
     README.md > /tmp/book-content.md
 
 # EPUB
@@ -94,7 +113,12 @@ pandoc /tmp/book-content.md --from markdown+raw_html --to pdf \
   --output test.pdf --metadata-file book-metadata.yaml \
   --toc --toc-depth=3 --pdf-engine=xelatex \
   -V geometry:margin=1in -V mainfont="DejaVu Serif" \
-  -V monofont="DejaVu Sans Mono" --standalone
+  -V monofont="DejaVu Sans Mono" -V fontsize=11pt --standalone
+
+# HTML
+pandoc /tmp/book-content.md --from markdown+raw_html --to html5 \
+  --output test.html --metadata-file book-metadata.yaml \
+  --toc --toc-depth=3 --standalone --self-contained
 ```
 
 ### Monitor changes via RSS
