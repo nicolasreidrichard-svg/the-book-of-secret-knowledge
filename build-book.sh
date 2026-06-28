@@ -47,9 +47,10 @@ preprocess() {
     -e '/badge/d' \
     -e '/opencollective\.com.*contributors\.svg/d' \
     -e 's/&nbsp;/ /g' \
+    -e 's/\[<sup>\[TOC\]<\/sup>\](#[^)]*)//g' \
     "$input" > "$output"
 
-  echo "[preprocess] Cleaned markdown written to $output"
+  echo "[preprocess] Cleaned markdown written to $output ($(wc -l < "$output") lines)"
 }
 
 # ---------------------------------------------------------------------------
@@ -91,6 +92,7 @@ build_pdf() {
     -V urlcolor:blue \
     -V mainfont="DejaVu Serif" \
     -V monofont="DejaVu Sans Mono" \
+    -V fontsize=11pt \
     --standalone
 
   echo "[pdf]    Built ${OUTPUT_DIR}/${BOOK_BASENAME}.pdf"
@@ -187,3 +189,15 @@ fi
 
 echo ""
 echo "All requested formats built in ${OUTPUT_DIR}/"
+echo ""
+
+for f in "${OUTPUT_DIR}/${BOOK_BASENAME}".*; do
+  if [ -f "$f" ]; then
+    size=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null)
+    if [ "$size" -lt 1024 ]; then
+      echo "WARNING: $(basename "$f") is suspiciously small (${size} bytes)"
+    else
+      echo "OK: $(basename "$f") (${size} bytes)"
+    fi
+  fi
+done

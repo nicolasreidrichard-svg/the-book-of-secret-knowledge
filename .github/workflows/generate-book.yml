@@ -20,8 +20,19 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Cache TeX Live packages
+        uses: actions/cache@v4
+        with:
+          path: /tmp/texlive-cache
+          key: texlive-xetex-fonts-${{ runner.os }}-v1
+          restore-keys: |
+            texlive-xetex-fonts-${{ runner.os }}-
+
       - name: Install pandoc and LaTeX
         run: |
+          if [ -d /tmp/texlive-cache ] && [ "$(ls /tmp/texlive-cache)" ]; then
+            sudo rsync -a /tmp/texlive-cache/ /usr/local/texlive/
+          fi
           sudo apt-get update -q
           sudo apt-get install -y --no-install-recommends \
             pandoc \
@@ -29,12 +40,14 @@ jobs:
             texlive-fonts-recommended \
             texlive-plain-generic \
             texlive-fonts-extra
+          mkdir -p /tmp/texlive-cache
+          if [ -d /usr/local/texlive ]; then
+            sudo rsync -a /usr/local/texlive/ /tmp/texlive-cache/
+          fi
 
       - name: Pre-process README for book output
         run: |
-          # Remove GitHub emoji shortcodes (e.g. :notebook_with_decorative_cover:)
-          # and clean up GitHub-specific badge/contribution images so the book
-          # renders cleanly in all output formats.
+          set -euo pipefail
           sed \
             -e 's/:[a-zA-Z0-9_]*: &nbsp;//g' \
             -e 's/:[a-zA-Z0-9_]*://g' \
@@ -42,10 +55,13 @@ jobs:
             -e '/badge/d' \
             -e '/opencollective\.com.*contributors\.svg/d' \
             -e 's/&nbsp;/ /g' \
+            -e 's/\[<sup>\[TOC\]<\/sup>\](#[^)]*)//g' \
             README.md > /tmp/book-content.md
+          echo "Pre-processed $(wc -l < /tmp/book-content.md) lines"
 
       - name: Generate EPUB
         run: |
+          set -euo pipefail
           pandoc /tmp/book-content.md \
             --from markdown+raw_html \
             --to epub3 \
@@ -57,6 +73,7 @@ jobs:
 
       - name: Generate PDF
         run: |
+          set -euo pipefail
           pandoc /tmp/book-content.md \
             --from markdown+raw_html \
             --to pdf \
@@ -70,10 +87,12 @@ jobs:
             -V urlcolor:blue \
             -V mainfont="DejaVu Serif" \
             -V monofont="DejaVu Sans Mono" \
+            -V fontsize=11pt \
             --standalone
 
       - name: Generate standalone HTML
         run: |
+          set -euo pipefail
           pandoc /tmp/book-content.md \
             --from markdown+raw_html \
             --to html5 \
@@ -133,6 +152,24 @@ jobs:
           </style>
           CSS
 
+      - name: Verify generated files
+        run: |
+          set -euo pipefail
+          for f in the-book-of-secret-knowledge.html \
+                   the-book-of-secret-knowledge.epub \
+                   the-book-of-secret-knowledge.pdf; do
+            if [ ! -f "$f" ]; then
+              echo "ERROR: $f was not generated" >&2
+              exit 1
+            fi
+            size=$(stat -c%s "$f")
+            if [ "$size" -lt 1024 ]; then
+              echo "WARNING: $f is suspiciously small (${size} bytes)"
+            else
+              echo "OK: $f (${size} bytes)"
+            fi
+          done
+
       - name: Delete previous release (if exists)
         run: |
           if gh release view book-latest &>/dev/null; then
@@ -143,17 +180,21 @@ jobs:
 
       - name: Create GitHub Release with book files
         run: |
+          html_size=$(numfmt --to=iec the-book-of-secret-knowledge.html | sed 's/ //')
+          epub_size=$(numfmt --to=iec the-book-of-secret-knowledge.epub | sed 's/ //')
+          pdf_size=$(numfmt --to=iec the-book-of-secret-knowledge.pdf | sed 's/ //')
+
           gh release create book-latest \
             --title "The Book of Secret Knowledge – Latest Edition" \
             --notes "## Download The Book of Secret Knowledge
 
           Downloadable formats of The Book of Secret Knowledge, built automatically from the latest \`README.md\`.
 
-          | Format | Best for |
-          |--------|----------|
-          | **HTML** | Any web browser, instantly viewable, fully self-contained, works offline |
-          | **EPUB** | E-readers (Kindle, Kobo, Apple Books), phones, tablets |
-          | **PDF**  | Printing, offline viewing on any device |
+          | Format | Size | Best for |
+          |--------|------|----------|
+          | **HTML** | ${html_size} | Any web browser — instantly viewable, fully self-contained, works offline |
+          | **EPUB** | ${epub_size} | E-readers (Kindle, Kobo, Apple Books), phones, tablets |
+          | **PDF**  | ${pdf_size} | Printing, offline viewing on any device |
 
           Generated from commit \`${{ github.sha }}\` on $(date -u '+%Y-%m-%d %H:%M UTC')." \
             the-book-of-secret-knowledge.html \
